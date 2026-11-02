@@ -1,0 +1,1468 @@
+return(function(ai6bY, ...)
+local OiFfvI = {"6iknEdef7Vwn7w";"m5F0gt";"6jcdaWMz8x3Nd";"Vvrz6UbMiK1yf";"mzF"}
+local 4cZJPsfz = function(...)
+--[[
+    DELTA  |  Built-in Executor UI
+    Creator : YapBroo
+    Works with any executor that supports loadstring.
+    Re-running the script replaces the old menu AND restores the toggle button.
+]]
+
+--========================= CONFIG =========================--
+local OWNER_NAME           = loadstring(base64decode("WWFwQnJvbw=="))()
+local OWNER_USERID         = nil   -- RECOMMENDED: put your numeric UserId here (stops name-swap tricks)
+local STATIC_WHITELIST     = {}    -- usernames allowed to load the script, e.g. {loadstring(base64decode("RnJpZW5kMQ=="))(), loadstring(base64decode("RnJpZW5kMg=="))()}
+local REMOTE_WHITELIST_URL = loadstring(base64decode(""))()    -- OPTIONAL: raw-text URL you control, one username per line
+--==========================================================--
+
+local Players      = game:GetService(loadstring(base64decode("UGxheWVycw=="))())
+local UIS          = game:GetService(loadstring(base64decode("VXNlcklucHV0U2VydmljZQ=="))())
+local TweenService = game:GetService(loadstring(base64decode("VHdlZW5TZXJ2aWNl"))())
+local RunService   = game:GetService(loadstring(base64decode("UnVuU2VydmljZQ=="))())
+local TextService  = game:GetService(loadstring(base64decode("VGV4dFNlcnZpY2U="))())
+local HttpService  = game:GetService(loadstring(base64decode("SHR0cFNlcnZpY2U="))())
+local LogService   = game:GetService(loadstring(base64decode("TG9nU2VydmljZQ=="))())
+local CoreGui      = game:GetService(loadstring(base64decode("Q29yZUd1aQ=="))())
+
+local LocalPlayer = Players.LocalPlayer
+local genv = (getgenv and getgenv()) or _G
+
+local function lc(s) return string.lower(tostring(s or loadstring(base64decode(""))())) end
+
+--==================== ACCESS CONTROL ====================--
+local IS_OWNER = lc(LocalPlayer.Name) == lc(OWNER_NAME)
+    and (OWNER_USERID == nil or LocalPlayer.UserId == OWNER_USERID)
+
+local function isAllowed()
+    if IS_OWNER then return true end
+    local me = lc(LocalPlayer.Name)
+    for _, n in ipairs(STATIC_WHITELIST) do
+        if lc(n) == me then return true end
+    end
+    if REMOTE_WHITELIST_URL ~= loadstring(base64decode(""))() then
+        local ok, body = pcall(function() return game:HttpGet(REMOTE_WHITELIST_URL) end)
+        if ok and type(body) == loadstring(base64decode("c3RyaW5n"))() then
+            for line in body:gmatch(loadstring(base64decode("W15cclxuLF0r"))()) do
+                if lc((line:gsub(loadstring(base64decode("JXM="))(), loadstring(base64decode(""))()))) == me then return true end
+            end
+        end
+    end
+    return false
+end
+
+if not isAllowed() then
+    warn(loadstring(base64decode("W0RlbHRhXSBBY2Nlc3MgZGVuaWVkOiA="))() .. LocalPlayer.Name .. loadstring(base64decode("IGlzIG5vdCB3aGl0ZWxpc3RlZC4="))())
+    return
+end
+
+-- remove a previous run (also restores the toggle button)
+if genv.__DeltaYB_Cleanup then pcall(genv.__DeltaYB_Cleanup) end
+
+--==================== FILE HELPERS ====================--
+local function readJson(path, default)
+    if not (isfile and readfile) then return default end
+    local ok, res = pcall(function()
+        if isfile(path) then return HttpService:JSONDecode(readfile(path)) end
+        return nil
+    end)
+    if ok and res ~= nil then return res end
+    return default
+end
+
+local function writeJson(path, data)
+    if not writefile then return false end
+    return (pcall(function() writefile(path, HttpService:JSONEncode(data)) end))
+end
+
+--==================== SETTINGS DATA ====================--
+local Cfg = { theme = loadstring(base64decode("Tm9ybWFs"))(), particles = true, space = true, ambient = true }
+do
+    local saved = readJson(loadstring(base64decode("RGVsdGFZQl9zZXR0aW5ncy5qc29u"))(), {})
+    if type(saved) == loadstring(base64decode("dGFibGU="))() then
+        for k, v in pairs(saved) do
+            if Cfg[k] ~= nil and type(v) == type(Cfg[k]) then Cfg[k] = v end
+        end
+    end
+end
+local function saveSettings() writeJson(loadstring(base64decode("RGVsdGFZQl9zZXR0aW5ncy5qc29u"))(), Cfg) end
+
+--==================== THEMES ====================--
+local C = Color3.fromRGB
+local Themes = {
+    Normal = { Bg = C(22, 12, 30),  Panel = C(14, 9, 19),   Accent = C(190, 95, 255), Text = C(240, 236, 250), Sub = C(150, 140, 168), Stroke = C(52, 40, 66),  Button = C(40, 30, 52),  ExecBg = C(243, 240, 252), ExecText = C(22, 12, 30), Light = false },
+    Peach  = { Bg = C(48, 28, 26),  Panel = C(36, 21, 21),  Accent = C(255, 160, 122), Text = C(255, 240, 232), Sub = C(192, 152, 140), Stroke = C(88, 56, 50),  Button = C(72, 45, 41),  ExecBg = C(255, 226, 210), ExecText = C(60, 28, 22), Light = false },
+    Apple  = { Bg = C(18, 36, 22),  Panel = C(12, 26, 16),  Accent = C(236, 66, 74),   Text = C(240, 250, 236), Sub = C(140, 176, 146), Stroke = C(34, 72, 44),  Button = C(26, 54, 34),  ExecBg = C(236, 66, 74),   ExecText = C(255, 255, 255), Light = false },
+    Redish = { Bg = C(38, 12, 14),  Panel = C(27, 8, 10),   Accent = C(255, 82, 82),   Text = C(255, 236, 236), Sub = C(184, 132, 134), Stroke = C(80, 34, 38),  Button = C(62, 24, 28),  ExecBg = C(255, 226, 226), ExecText = C(40, 10, 12), Light = false },
+    SkyBlue= { Bg = C(14, 30, 48),  Panel = C(9, 21, 36),   Accent = C(86, 190, 255),  Text = C(232, 246, 255), Sub = C(132, 162, 188), Stroke = C(36, 64, 94),  Button = C(26, 48, 74),  ExecBg = C(228, 244, 255), ExecText = C(10, 28, 46), Light = false },
+    Light  = { Bg = C(240, 242, 247), Panel = C(255, 255, 255), Accent = C(110, 90, 255), Text = C(28, 30, 40),   Sub = C(110, 115, 130), Stroke = C(208, 212, 224), Button = C(226, 230, 240), ExecBg = C(30, 30, 44),   ExecText = C(255, 255, 255), Light = true },
+    Dark   = { Bg = C(16, 16, 18),  Panel = C(9, 9, 11),    Accent = C(210, 210, 222), Text = C(236, 236, 241), Sub = C(130, 130, 142), Stroke = C(44, 44, 52),  Button = C(32, 32, 38),  ExecBg = C(240, 240, 245), ExecText = C(14, 14, 16), Light = false },
+    Green  = { Bg = C(10, 30, 20),  Panel = C(6, 21, 13),   Accent = C(72, 230, 140),  Text = C(228, 252, 238), Sub = C(120, 168, 142), Stroke = C(30, 70, 48),  Button = C(22, 52, 36),  ExecBg = C(222, 252, 236), ExecText = C(8, 32, 20),  Light = false },
+    Gray   = { Bg = C(40, 42, 48),  Panel = C(31, 33, 38),  Accent = C(166, 176, 196), Text = C(236, 238, 242), Sub = C(150, 154, 164), Stroke = C(70, 74, 84),  Button = C(56, 59, 67),  ExecBg = C(228, 230, 236), ExecText = C(30, 32, 38), Light = false },
+}
+local THEME_ORDER = { loadstring(base64decode("Tm9ybWFs"))(), loadstring(base64decode("UGVhY2g="))(), loadstring(base64decode("QXBwbGU="))(), loadstring(base64decode("UmVkaXNo"))(), loadstring(base64decode("U2t5Qmx1ZQ=="))(), loadstring(base64decode("TGlnaHQ="))(), loadstring(base64decode("RGFyaw=="))(), loadstring(base64decode("R3JlZW4="))(), loadstring(base64decode("R3JheQ=="))() }
+
+if not Themes[Cfg.theme] then Cfg.theme = loadstring(base64decode("Tm9ybWFs"))() end
+local Theme = Themes[Cfg.theme]
+
+--==================== CORE HELPERS ====================--
+local GM, GB = Enum.Font.GothamMedium, Enum.Font.GothamBold
+local LEFT, RIGHT, CENTER = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right, Enum.TextXAlignment.Center
+
+local ICON_GEAR  = loadstring(base64decode("XHV7MjY5OX1cdXtGRTBGfQ=="))()
+local ICON_PEN   = loadstring(base64decode("XHV7MjcwRn1cdXtGRTBGfQ=="))()
+local ICON_PLAY  = loadstring(base64decode("XHV7MjVCNn0="))()
+local ICON_CROWN = loadstring(base64decode("XHV7MUY0NTF9"))()
+local ICON_DELTA = loadstring(base64decode("XHV7MDM5NH0="))()
+local ICON_X     = loadstring(base64decode("XHV7MDBEN30="))()
+
+local Conns, Cleanups = {}, {}
+local function on(signal, fn)
+    local c = signal:Connect(fn)
+    Conns[#Conns + 1] = c
+    return c
+end
+
+local function new(class, props)
+    local o = Instance.new(class)
+    local parent
+    for k, v in pairs(props) do
+        if k == loadstring(base64decode("UGFyZW50"))() then parent = v else o[k] = v end
+    end
+    o.Parent = parent
+    return o
+end
+
+local bindings, hooks = {}, {}
+local function runHooks()
+    for _, h in ipairs(hooks) do pcall(h) end
+end
+
+local function bind(inst, prop, role)
+    bindings[#bindings + 1] = { inst, prop, role }
+    inst[prop] = Theme[role]
+    return inst
+end
+
+local function applyTheme(name)
+    local t = Themes[name]
+    if not t then return end
+    Theme = t
+    Cfg.theme = name
+    local info = TweenInfo.new(0.25)
+    for 4Lmg8U0m = #bindings, 1, -1 do
+        local b = bindings[4Lmg8U0m]
+        if b[1].Parent then
+            TweenService:Create(b[1], info, { [b[2]] = t[b[3]] }):Play()
+        else
+            table.remove(bindings, 4Lmg8U0m)
+        end
+    end
+    runHooks()
+end
+
+local function corner(o, r)
+    return new(loadstring(base64decode("VUlDb3JuZXI="))(), { CornerRadius = UDim.new(0, r), Parent = o })
+end
+
+local function stroke(o, role, th)
+    local s = new(loadstring(base64decode("VUlTdHJva2U="))(), { Thickness = th or 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = o })
+    bind(s, loadstring(base64decode("Q29sb3I="))(), role or loadstring(base64decode("U3Ryb2tl"))())
+    return s
+end
+
+local function mkText(class, props, role)
+    if props.BackgroundTransparency == nil then props.BackgroundTransparency = 1 end
+    props.BorderSizePixel = 0
+    props.Font = props.Font or GM
+    props.TextSize = props.TextSize or 14
+    if props.Text == nil then props.Text = loadstring(base64decode(""))() end
+    if class == loadstring(base64decode("VGV4dEJ1dHRvbg=="))() and props.AutoButtonColor == nil then props.AutoButtonColor = false end
+    local o = new(class, props)
+    if role then bind(o, loadstring(base64decode("VGV4dENvbG9yMw=="))(), role) end
+    return o
+end
+
+local function pressFx(btn)
+    local s = new(loadstring(base64decode("VUlTY2FsZQ=="))(), { Parent = btn })
+    on(btn.MouseButton1Down, function()
+        TweenService:Create(s, TweenInfo.new(0.07), { Scale = 0.95 }):Play()
+    end)
+    local function up() TweenService:Create(s, TweenInfo.new(0.1), { Scale = 1 }):Play() end
+    on(btn.MouseButton1Up, up)
+    on(btn.MouseLeave, up)
+end
+
+local function hex(c)
+    return string.format(loadstring(base64decode("IyUwMnglMDJ4JTAyeA=="))(),
+        math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5))
+end
+
+--==================== SYNTAX HIGHLIGHTER ====================--
+local ESC = { [loadstring(base64decode("Jg=="))()] = loadstring(base64decode("JmFtcDs="))(), [loadstring(base64decode("PA=="))()] = loadstring(base64decode("Jmx0Ow=="))(), [loadstring(base64decode("Pg=="))()] = loadstring(base64decode("Jmd0Ow=="))(), ['loadstring(base64decode("J10gPSA="))()&quot;loadstring(base64decode("LCBb"))()'loadstring(base64decode("XSA9IA=="))()&apos;loadstring(base64decode("IH0KbG9jYWwgZnVuY3Rpb24gZXNjKHMpIHJldHVybiAoczpnc3ViKA=="))()[&<>\loadstring(base64decode("J10="))(), ESC)) end
+
+local KEYWORDS, BUILTINS = {}, {}
+for w in (loadstring(base64decode("YW5kIGJyZWFrIGRvIGVsc2UgZWxzZWlmIGVuZCBmYWxzZSBmb3IgZnVuY3Rpb24gaWYgaW4gbG9jYWwgbmlsIG5vdCBvciByZXBlYXQgcmV0dXJuIHRoZW4gdHJ1ZSB1bnRpbCB3aGlsZSBjb250aW51ZQ=="))()):gmatch(loadstring(base64decode("JVMr"))()) do KEYWORDS[w] = true end
+for w in (loadstring(base64decode("cHJpbnQgd2FybiBlcnJvciBhc3NlcnQgcmVxdWlyZSBsb2Fkc3RyaW5nIHBjYWxsIHhwY2FsbCB0eXBlIHR5cGVvZiB0b3N0cmluZyB0b251bWJlciBwYWlycyBpcGFpcnMgbmV4dCBzZWxlY3QgdW5wYWNrIHJhd2dldCByYXdzZXQgc2V0bWV0YXRhYmxlIGdldG1ldGF0YWJsZSBnYW1lIHdvcmtzcGFjZSBzY3JpcHQgdGFzayB3YWl0IHNwYXduIGRlbGF5IHRpY2sgdGltZSBvcyBzdHJpbmcgdGFibGUgbWF0aCBJbnN0YW5jZSBWZWN0b3IzIFZlY3RvcjIgQ0ZyYW1lIENvbG9yMyBVRGltMiBVRGltIEVudW0gVHdlZW5JbmZvIFJhbmRvbSBnZXRnZW52IGdldGZlbnYgc2V0ZmVudg=="))()):gmatch(loadstring(base64decode("JVMr"))()) do BUILTINS[w] = true end
+
+local SynPalette = {
+    dark  = { kw = loadstring(base64decode("I2YwNmVmMA=="))(), bi = loadstring(base64decode("I2YwNmVmMA=="))(), num = loadstring(base64decode("I2E5Y2JkOA=="))(), fn = loadstring(base64decode("IzhmZDBmZg=="))(), str = loadstring(base64decode("I2ZmYzljOQ=="))(), com = loadstring(base64decode("IzZmNmE3Yw=="))(), pun = loadstring(base64decode("IzdkNzM5MA=="))() },
+    light = { kw = loadstring(base64decode("I2IzMTk5ZQ=="))(), bi = loadstring(base64decode("I2IzMTk5ZQ=="))(), num = loadstring(base64decode("IzBlNzQ5MA=="))(), fn = loadstring(base64decode("IzE3NjljMg=="))(), str = loadstring(base64decode("I2MyNDEwYw=="))(), com = loadstring(base64decode("IzhiOGZhMA=="))(), pun = loadstring(base64decode("IzhhOGZhMw=="))() },
+}
+
+local function highlight(src, pal)
+    local out, n, 4Lmg8U0m = {}, #src, 1
+    local function put(color, s)
+        s = esc(s)
+        out[#out + 1] = color and ('<font color=loadstring(base64decode("JyAuLiBjb2xvciAuLiAn"))()>' .. s .. '</font>') or s
+    end
+    while 4Lmg8U0m <= n do
+        local c = src:sub(4Lmg8U0m, 4Lmg8U0m)
+        if c == loadstring(base64decode("LQ=="))() and src:sub(4Lmg8U0m + 1, 4Lmg8U0m + 1) == loadstring(base64decode("LQ=="))() then
+            local eq = src:match(loadstring(base64decode("XiUtJS0lWyg9KiklWw=="))(), 4Lmg8U0m)
+            local stop
+            if eq then
+                local close = loadstring(base64decode("XQ=="))() .. eq .. loadstring(base64decode("XQ=="))()
+                local _, e = src:find(close, 4Lmg8U0m + 4 + #eq, true)
+                stop = e or n
+            else
+                local e = src:find(loadstring(base64decode("XG4="))(), 4Lmg8U0m, true)
+                stop = e and (e - 1) or n
+            end
+            put(pal.com, src:sub(4Lmg8U0m, stop))
+            4Lmg8U0m = stop + 1
+        elseif c == 'loadstring(base64decode("JyBvciBjID09IA=="))()'loadstring(base64decode("IHRoZW4KICAgICAgICAgICAgbG9jYWwgaiwgc3RvcCA9IGkgKyAxLCBuaWwKICAgICAgICAgICAgd2hpbGUgdHJ1ZSBkbwogICAgICAgICAgICAgICAgaWYgaiA+IG4gdGhlbgogICAgICAgICAgICAgICAgICAgIHN0b3AgPSBuCiAgICAgICAgICAgICAgICAgICAgYnJlYWsKICAgICAgICAgICAgICAgIGVuZAogICAgICAgICAgICAgICAgbG9jYWwgZCA9IHNyYzpzdWIoaiwgaikKICAgICAgICAgICAgICAgIGlmIGQgPT0g"))()\\loadstring(base64decode("IHRoZW4KICAgICAgICAgICAgICAgICAgICBqID0gaiArIDIKICAgICAgICAgICAgICAgIGVsc2VpZiBkID09IGMgdGhlbgogICAgICAgICAgICAgICAgICAgIHN0b3AgPSBqCiAgICAgICAgICAgICAgICAgICAgYnJlYWsKICAgICAgICAgICAgICAgIGVsc2VpZiBkID09IA=="))()\nloadstring(base64decode("IHRoZW4KICAgICAgICAgICAgICAgICAgICBzdG9wID0gaiAtIDEKICAgICAgICAgICAgICAgICAgICBicmVhawogICAgICAgICAgICAgICAgZWxzZQogICAgICAgICAgICAgICAgICAgIGogPSBqICsgMQogICAgICAgICAgICAgICAgZW5kCiAgICAgICAgICAgIGVuZAogICAgICAgICAgICBwdXQocGFsLnN0ciwgc3JjOnN1YihpLCBzdG9wKSkKICAgICAgICAgICAgaSA9IHN0b3AgKyAxCiAgICAgICAgZWxzZWlmIGMgPT0g"))()[loadstring(base64decode("IGFuZCBzcmM6bWF0Y2go"))()^%[=*%[loadstring(base64decode("LCBpKSB0aGVuCiAgICAgICAgICAgIGxvY2FsIGVxID0gc3JjOm1hdGNoKA=="))()^%[(=*)%[loadstring(base64decode("LCBpKQogICAgICAgICAgICBsb2NhbCBjbG9zZSA9IA=="))()]loadstring(base64decode("IC4uIGVxIC4uIA=="))()]loadstring(base64decode("CiAgICAgICAgICAgIGxvY2FsIF8sIGUgPSBzcmM6ZmluZChjbG9zZSwgaSArIDIgKyAjZXEsIHRydWUpCiAgICAgICAgICAgIGxvY2FsIHN0b3AgPSBlIG9yIG4KICAgICAgICAgICAgcHV0KHBhbC5zdHIsIHNyYzpzdWIoaSwgc3RvcCkpCiAgICAgICAgICAgIGkgPSBzdG9wICsgMQogICAgICAgIGVsc2VpZiBjOm1hdGNoKA=="))()%dloadstring(base64decode("KSB0aGVuCiAgICAgICAgICAgIGxvY2FsIG51bSA9IHNyYzptYXRjaCg="))()^0[xX]%Wi2gF0Ma+loadstring(base64decode("LCBpKQogICAgICAgICAgICAgICAgb3Igc3JjOm1hdGNoKA=="))()^%d+%.?%d*[eE][%+%-]?%d+loadstring(base64decode("LCBpKQogICAgICAgICAgICAgICAgb3Igc3JjOm1hdGNoKA=="))()^%d+%.?%d*loadstring(base64decode("LCBpKQogICAgICAgICAgICBwdXQocGFsLm51bSwgbnVtKQogICAgICAgICAgICBpID0gaSArICNudW0KICAgICAgICBlbHNlaWYgYzptYXRjaCg="))()[%a_]loadstring(base64decode("KSB0aGVuCiAgICAgICAgICAgIGxvY2FsIHdvcmQgPSBzcmM6bWF0Y2go"))()^[%a_][%w_]*loadstring(base64decode("LCBpKQogICAgICAgICAgICBsb2NhbCBwcmV2ID0gc3JjOnN1YihpIC0gMSwgaSAtIDEpCiAgICAgICAgICAgIGxvY2FsIGNvbG9yCiAgICAgICAgICAgIGlmIEtFWVdPUkRTW3dvcmRdIHRoZW4KICAgICAgICAgICAgICAgIGNvbG9yID0gcGFsLmt3CiAgICAgICAgICAgIGVsc2VpZiBwcmV2ID09IA=="))():loadstring(base64decode("IG9yIHByZXYgPT0g"))().loadstring(base64decode("IHRoZW4KICAgICAgICAgICAgICAgIGlmIHNyYzptYXRjaCg="))()^%s*[%(\loadstring(base64decode("J3td"))(), 4Lmg8U0m + #word) then color = pal.fn end
+            elseif BUILTINS[word] then
+                color = pal.bi
+            elseif src:match(loadstring(base64decode("XiVzKiUo"))(), 4Lmg8U0m + #word) then
+                color = pal.fn
+            end
+            put(color, word)
+            4Lmg8U0m = 4Lmg8U0m + #word
+        elseif c:match(loadstring(base64decode("WyUoJSklWyVde30sO10="))()) then
+            put(pal.pun, c)
+            4Lmg8U0m = 4Lmg8U0m + 1
+        else
+            local run = src:match(loadstring(base64decode("XlteJWFfJWRcIiclLSVbJSglKSVde30sO10r"))(), 4Lmg8U0m) or c
+            put(nil, run)
+            4Lmg8U0m = 4Lmg8U0m + #run
+        end
+    end
+    return table.concat(out)
+end
+
+--==================== GUI ROOT ====================--
+local function getGuiParent()
+    if gethui then
+        local ok, ui = pcall(gethui)
+        if ok and typeof(ui) == loadstring(base64decode("SW5zdGFuY2U="))() then return ui end
+    end
+    local ok = pcall(function()
+        local f = Instance.new(loadstring(base64decode("Rm9sZGVy"))())
+        f.Parent = CoreGui
+        f:Destroy()
+    end)
+    if ok then return CoreGui end
+    return LocalPlayer:WaitForChild(loadstring(base64decode("UGxheWVyR3Vp"))())
+end
+
+local Gui = new(loadstring(base64decode("U2NyZWVuR3Vp"))(), {
+    Name = loadstring(base64decode("RGVsdGFFeGVjdXRvcg=="))(),
+    ResetOnSpawn = false,
+    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    DisplayOrder = 9999,
+})
+pcall(function() if syn and syn.protect_gui then syn.protect_gui(Gui) end end)
+Gui.Parent = getGuiParent()
+
+genv.__DeltaYB_Cleanup = function()
+    for _, c in ipairs(Conns) do pcall(function() c:Disconnect() end) end
+    for _, f in ipairs(Cleanups) do pcall(f) end
+    pcall(function() Gui:Destroy() end)
+    genv.__DeltaYB_Cleanup = nil
+end
+
+local Main = new(loadstring(base64decode("RnJhbWU="))(), {
+    Name = loadstring(base64decode("TWFpbg=="))(),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(0.5, 0.5),
+    Size = UDim2.fromScale(0.7, 0.86),
+    BorderSizePixel = 0,
+    Active = true,
+    ClipsDescendants = true,
+    Parent = Gui,
+})
+bind(Main, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("Qmc="))())
+new(loadstring(base64decode("VUlTaXplQ29uc3RyYWludA=="))(), { MinSize = Vector2.new(330, 300), MaxSize = Vector2.new(520, 620), Parent = Main })
+corner(Main, 18)
+stroke(Main, loadstring(base64decode("U3Ryb2tl"))())
+local MenuScale = new(loadstring(base64decode("VUlTY2FsZQ=="))(), { Scale = 1, Parent = Main })
+
+-- drag grip
+local Grip = new(loadstring(base64decode("RnJhbWU="))(), { Name = loadstring(base64decode("R3JpcA=="))(), BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 20), Parent = Main })
+do
+    local pill = new(loadstring(base64decode("RnJhbWU="))(), {
+        AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 2),
+        Size = UDim2.fromOffset(40, 4), BorderSizePixel = 0, Parent = Grip,
+    })
+    corner(pill, 2)
+    bind(pill, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("U3Ryb2tl"))())
+end
+
+local Content = new(loadstring(base64decode("RnJhbWU="))(), {
+    Name = loadstring(base64decode("Q29udGVudA=="))(), BackgroundTransparency = 1,
+    Position = UDim2.new(0, 8, 0, 20), Size = UDim2.new(1, -16, 1, -28),
+    ZIndex = 2, Parent = Main,
+})
+
+--==================== DRAGGING ====================--
+local function makeDraggable(handle, target, onTap, onDragEnd)
+    local dragging, moved, startMouse, startPos = false, false, nil, nil
+    on(handle.InputBegan, function(input)
+        local ut = input.UserInputType
+        if ut == Enum.UserInputType.MouseButton1 or ut == Enum.UserInputType.Touch then
+            dragging, moved = true, false
+            startMouse, startPos = input.Position, target.Position
+        end
+    end)
+    on(UIS.InputChanged, function(input)
+        if not dragging then return end
+        local ut = input.UserInputType
+        if ut == Enum.UserInputType.MouseMovement or ut == Enum.UserInputType.Touch then
+            local d = input.Position - startMouse
+            if d.Magnitude > 6 then moved = true end
+            if moved then
+                target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X,
+                    startPos.Y.Scale, startPos.Y.Offset + d.Y)
+            end
+        end
+    end)
+    on(UIS.InputEnded, function(input)
+        local ut = input.UserInputType
+        if dragging and (ut == Enum.UserInputType.MouseButton1 or ut == Enum.UserInputType.Touch) then
+            dragging = false
+            if not moved and onTap then onTap() end
+            if moved and onDragEnd then onDragEnd() end
+        end
+    end)
+end
+
+local function ensureOnScreen(f, defaultPos)
+    local c = f.AbsolutePosition + f.AbsoluteSize / 2
+    local s = Gui.AbsoluteSize
+    if c.X < 0 or c.Y < 0 or c.X > s.X + 40 or c.Y > s.Y + 40 then
+        f.Position = defaultPos
+    end
+end
+
+--==================== PARTICLES (background) ====================--
+local Particles = {}
+do
+    local layer = new(loadstring(base64decode("RnJhbWU="))(), {
+        Name = loadstring(base64decode("UGFydGljbGVz"))(), BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
+        ZIndex = 1, ClipsDescendants = true, Parent = Main,
+    })
+    local rng = Random.new()
+    local stars, orbs = {}, {}
+
+    for _ = 1, 48 do
+        local s = rng:NextInteger(1, 3)
+        local f = new(loadstring(base64decode("RnJhbWU="))(), {
+            Size = UDim2.fromOffset(s, s), BackgroundColor3 = Theme.Text,
+            BorderSizePixel = 0, Parent = layer,
+        })
+        stars[#stars + 1] = {
+            f = f, Wi2gF0Ma = rng:NextNumber(), bkHtsWq6 = rng:NextNumber(),
+            vy = rng:NextNumber(0.01, 0.04), vx = rng:NextNumber(-0.008, 0.008),
+            tw = rng:NextNumber(0.6, 2.2), ph = rng:NextNumber(0, 6.28),
+        }
+    end
+    for _ = 1, 6 do
+        local s = rng:NextInteger(90, 190)
+        local f = new(loadstring(base64decode("RnJhbWU="))(), {
+            AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(s, s),
+            BackgroundColor3 = Theme.Accent, BackgroundTransparency = 0.9,
+            BorderSizePixel = 0, Parent = layer,
+        })
+        corner(f, s)
+        orbs[#orbs + 1] = {
+            f = f, Wi2gF0Ma = rng:NextNumber(), bkHtsWq6 = rng:NextNumber(),
+            vx = rng:NextNumber(-0.02, 0.02), vy = rng:NextNumber(-0.02, 0.02),
+            tw = rng:NextNumber(0.3, 1), ph = rng:NextNumber(0, 6.28),
+        }
+    end
+
+    local t, conn = 0, nil
+    local function step(dt)
+        if not Main.Visible then return end
+        t = t + dt
+        if Cfg.space then
+            for _, s in ipairs(stars) do
+                s.bkHtsWq6 = s.bkHtsWq6 + s.vy * dt
+                s.Wi2gF0Ma = s.Wi2gF0Ma + s.vx * dt
+                if s.bkHtsWq6 > 1.02 then s.bkHtsWq6 = -0.02; s.Wi2gF0Ma = rng:NextNumber() end
+                if s.Wi2gF0Ma < -0.02 then s.Wi2gF0Ma = 1.02 elseif s.Wi2gF0Ma > 1.02 then s.Wi2gF0Ma = -0.02 end
+                s.f.Position = UDim2.fromScale(s.Wi2gF0Ma, s.bkHtsWq6)
+                s.f.BackgroundTransparency = 0.2 + 0.7 * (0.5 + 0.5 * math.sin(t * s.tw + s.ph))
+            end
+        end
+        if Cfg.ambient then
+            for _, o in ipairs(orbs) do
+                o.Wi2gF0Ma = o.Wi2gF0Ma + o.vx * dt
+                o.bkHtsWq6 = o.bkHtsWq6 + o.vy * dt
+                if o.Wi2gF0Ma < -0.2 then o.vx = math.abs(o.vx) elseif o.Wi2gF0Ma > 1.2 then o.vx = -math.abs(o.vx) end
+                if o.bkHtsWq6 < -0.2 then o.vy = math.abs(o.vy) elseif o.bkHtsWq6 > 1.2 then o.vy = -math.abs(o.vy) end
+                o.f.Position = UDim2.fromScale(o.Wi2gF0Ma, o.bkHtsWq6)
+                o.f.BackgroundTransparency = 0.88 + 0.06 * math.sin(t * o.tw + o.ph)
+            end
+        end
+    end
+
+    function Particles.apply()
+        local en = Cfg.particles
+        layer.Visible = en
+        for _, s in ipairs(stars) do s.f.Visible = en and Cfg.space end
+        for _, o in ipairs(orbs) do o.f.Visible = en and Cfg.ambient end
+        if en and not conn then
+            conn = RunService.Heartbeat:Connect(step)
+        elseif not en and conn then
+            conn:Disconnect()
+            conn = nil
+        end
+    end
+
+    hooks[#hooks + 1] = function()
+        for _, s in ipairs(stars) do s.f.BackgroundColor3 = Theme.Text end
+        for _, o in ipairs(orbs) do o.f.BackgroundColor3 = Theme.Accent end
+    end
+    Cleanups[#Cleanups + 1] = function() if conn then conn:Disconnect() end end
+end
+
+--==================== TOAST + PROMPT ====================--
+local notify
+do
+    local toast = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+        Name = loadstring(base64decode("VG9hc3Q="))(), TextSize = 13, AnchorPoint = Vector2.new(0.5, 1),
+        Position = UDim2.new(0.5, 0, 1, -16), Size = UDim2.new(0, 0, 0, 32),
+        AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 0.05,
+        TextTruncate = Enum.TextTruncate.AtEnd, Visible = false, ZIndex = 60, Parent = Main,
+    }, loadstring(base64decode("VGV4dA=="))())
+    bind(toast, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+    corner(toast, 16)
+    stroke(toast, loadstring(base64decode("U3Ryb2tl"))())
+    new(loadstring(base64decode("VUlQYWRkaW5n"))(), { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16), Parent = toast })
+    new(loadstring(base64decode("VUlTaXplQ29uc3RyYWludA=="))(), { MaxSize = Vector2.new(320, 32), Parent = toast })
+    local tk = 0
+    notify = function(msg, dur)
+        tk = tk + 1
+        local my = tk
+        toast.Text = msg
+        toast.Visible = true
+        task.delay(dur or 2.2, function()
+            if my == tk then toast.Visible = false end
+        end)
+    end
+end
+
+local Prompt = {}
+do
+    local ov = new(loadstring(base64decode("RnJhbWU="))(), {
+        Name = loadstring(base64decode("UHJvbXB0"))(), Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0),
+        BackgroundTransparency = 0.4, BorderSizePixel = 0, Visible = false, Active = true,
+        ZIndex = 50, Parent = Main,
+    })
+    local card = new(loadstring(base64decode("RnJhbWU="))(), {
+        AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.new(0.86, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+        BorderSizePixel = 0, Parent = ov,
+    })
+    bind(card, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("Qmc="))())
+    corner(card, 14)
+    stroke(card, loadstring(base64decode("U3Ryb2tl"))())
+    new(loadstring(base64decode("VUlTaXplQ29uc3RyYWludA=="))(), { MaxSize = Vector2.new(340, 400), Parent = card })
+    new(loadstring(base64decode("VUlQYWRkaW5n"))(), {
+        PaddingTop = UDim.new(0, 14), PaddingBottom = UDim.new(0, 14),
+        PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), Parent = card,
+    })
+    new(loadstring(base64decode("VUlMaXN0TGF5b3V0"))(), { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = card })
+
+    local title = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), { Font = GB, TextSize = 16, TextXAlignment = LEFT, Size = UDim2.new(1, 0, 0, 22), LayoutOrder = 1, Parent = card }, loadstring(base64decode("VGV4dA=="))())
+    local msg = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), { TextSize = 13, TextWrapped = true, TextXAlignment = LEFT, TextYAlignment = Enum.TextYAlignment.Top, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2, Parent = card }, loadstring(base64decode("U3Vi"))())
+    local input = mkText(loadstring(base64decode("VGV4dEJveA=="))(), { TextSize = 14, ClearTextOnFocus = false, TextXAlignment = LEFT, Size = UDim2.new(1, 0, 0, 38), BackgroundTransparency = 0, LayoutOrder = 3, Parent = card }, loadstring(base64decode("VGV4dA=="))())
+    bind(input, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+    bind(input, loadstring(base64decode("UGxhY2Vob2xkZXJDb2xvcjM="))(), loadstring(base64decode("U3Vi"))())
+    corner(input, 10)
+    new(loadstring(base64decode("VUlQYWRkaW5n"))(), { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = input })
+
+    local btns = new(loadstring(base64decode("RnJhbWU="))(), { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 36), LayoutOrder = 4, Parent = card })
+    local cancel = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), { Text = loadstring(base64decode("Q2FuY2Vs"))(), Size = UDim2.new(0.5, -5, 1, 0), BackgroundTransparency = 0, Parent = btns }, loadstring(base64decode("VGV4dA=="))())
+    bind(cancel, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+    corner(cancel, 10)
+    local okBtn = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), { Text = loadstring(base64decode("T0s="))(), Font = GB, Position = UDim2.new(0.5, 5, 0, 0), Size = UDim2.new(0.5, -5, 1, 0), BackgroundTransparency = 0, Parent = btns }, loadstring(base64decode("RXhlY1RleHQ="))())
+    bind(okBtn, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("RXhlY0Jn"))())
+    corner(okBtn, 10)
+
+    local cb
+    local function close()
+        ov.Visible = false
+        cb = nil
+    end
+    local function submit()
+        local f, text = cb, input.Text
+        close()
+        if f then f(text) end
+    end
+
+    function Prompt.show(o)
+        title.Text = o.title or loadstring(base64decode(""))()
+        msg.Text = o.message or loadstring(base64decode(""))()
+        msg.Visible = o.message ~= nil
+        input.Visible = o.input == true
+        input.Text = o.default or loadstring(base64decode(""))()
+        input.PlaceholderText = o.placeholder or loadstring(base64decode(""))()
+        okBtn.Text = o.okText or loadstring(base64decode("T0s="))()
+        cb = o.onSubmit
+        ov.Visible = true
+        if o.input then task.defer(function() input:CaptureFocus() end) end
+    end
+
+    on(cancel.Activated, close)
+    on(okBtn.Activated, submit)
+    on(input.FocusLost, function(enter)
+        if enter and ov.Visible and input.Visible then submit() end
+    end)
+end
+
+--==================== HEADER ====================--
+local Header = new(loadstring(base64decode("RnJhbWU="))(), { Name = loadstring(base64decode("SGVhZGVy"))(), BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40), Parent = Content })
+
+local GearBtn = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+    Name = loadstring(base64decode("R2Vhcg=="))(), Text = ICON_GEAR, TextSize = 18, AnchorPoint = Vector2.new(1, 0.5),
+    Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.fromOffset(38, 38),
+    BackgroundTransparency = 0, Parent = Header,
+}, loadstring(base64decode("VGV4dA=="))())
+bind(GearBtn, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+corner(GearBtn, 19)
+pressFx(GearBtn)
+
+local ExecBtn = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+    Name = loadstring(base64decode("RXhlY3V0ZQ=="))(), Text = ICON_PLAY .. loadstring(base64decode("ICBFeGVjdXRl"))(), Font = GB, TextSize = 14,
+    AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -46, 0.5, 0),
+    Size = UDim2.fromOffset(100, 38), BackgroundTransparency = 0, Parent = Header,
+}, loadstring(base64decode("RXhlY1RleHQ="))())
+bind(ExecBtn, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("RXhlY0Jn"))())
+corner(ExecBtn, 19)
+pressFx(ExecBtn)
+
+local TabBar = new(loadstring(base64decode("U2Nyb2xsaW5nRnJhbWU="))(), {
+    Name = loadstring(base64decode("VGFicw=="))(), BackgroundTransparency = 1, BorderSizePixel = 0,
+    Size = UDim2.new(1, -154, 1, 0), CanvasSize = UDim2.new(0, 0, 0, 0),
+    AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollBarThickness = 0,
+    ScrollingDirection = Enum.ScrollingDirection.X, Parent = Header,
+})
+new(loadstring(base64decode("VUlMaXN0TGF5b3V0"))(), {
+    FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center,
+    Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = TabBar,
+})
+local PlusBtn = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+    Name = loadstring(base64decode("UGx1cw=="))(), Text = loadstring(base64decode("Kw=="))(), Font = GB, TextSize = 24, LayoutOrder = 10000,
+    Size = UDim2.fromOffset(34, 34), Parent = TabBar,
+}, loadstring(base64decode("VGV4dA=="))())
+
+--==================== EDITOR ====================--
+local Editor = {}
+do
+    local FONT, SIZE = Enum.Font.Code, 15
+    local BIG = Vector2.new(100000, 100000)
+    local lineH = TextService:GetTextSize(loadstring(base64decode("TWc="))(), SIZE, FONT, BIG).Y
+    local charW = TextService:GetTextSize(string.rep(loadstring(base64decode("TQ=="))(), 100), SIZE, FONT, BIG).X / 100
+
+    local card = new(loadstring(base64decode("RnJhbWU="))(), {
+        Name = loadstring(base64decode("RWRpdG9yQ2FyZA=="))(), Position = UDim2.new(0, 0, 0, 48), Size = UDim2.new(1, 0, 0.58, -48),
+        BackgroundTransparency = 0.25, BorderSizePixel = 0, ClipsDescendants = true, Parent = Content,
+    })
+    bind(card, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("UGFuZWw="))())
+    corner(card, 14)
+    stroke(card, loadstring(base64decode("U3Ryb2tl"))())
+
+    local v = new(loadstring(base64decode("U2Nyb2xsaW5nRnJhbWU="))(), {
+        Name = loadstring(base64decode("Vg=="))(), BackgroundTransparency = 1, BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 1, -36), CanvasSize = UDim2.new(0, 0, 0, 0),
+        ScrollBarThickness = 3, ScrollingDirection = Enum.ScrollingDirection.Y, Parent = card,
+    })
+    bind(v, loadstring(base64decode("U2Nyb2xsQmFySW1hZ2VDb2xvcjM="))(), loadstring(base64decode("U3Vi"))())
+
+    local nums = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+        Position = UDim2.new(0, 0, 0, 8), Size = UDim2.new(0, 44, 0, 20), Font = FONT, TextSize = SIZE,
+        TextXAlignment = RIGHT, TextYAlignment = Enum.TextYAlignment.Top, Text = loadstring(base64decode("MQ=="))(), Parent = v,
+    }, loadstring(base64decode("U3Vi"))())
+    new(loadstring(base64decode("VUlQYWRkaW5n"))(), { PaddingRight = UDim.new(0, 10), Parent = nums })
+
+    local divider = new(loadstring(base64decode("RnJhbWU="))(), { Position = UDim2.new(0, 46, 0, 0), Size = UDim2.new(0, 1, 0, 100), BorderSizePixel = 0, Parent = v })
+    bind(divider, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("U3Ryb2tl"))())
+
+    local h = new(loadstring(base64decode("U2Nyb2xsaW5nRnJhbWU="))(), {
+        Name = loadstring(base64decode("SA=="))(), BackgroundTransparency = 1, BorderSizePixel = 0,
+        Position = UDim2.new(0, 50, 0, 0), Size = UDim2.new(1, -50, 0, 100),
+        CanvasSize = UDim2.new(0, 0, 0, 0), ScrollBarThickness = 0,
+        ScrollingDirection = Enum.ScrollingDirection.X, Parent = v,
+    })
+
+    local hl = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+        Position = UDim2.new(0, 0, 0, 8), Size = UDim2.new(1, 0, 0, 20), Font = FONT, TextSize = SIZE,
+        TextXAlignment = LEFT, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = false,
+        RichText = true, Parent = h,
+    }, loadstring(base64decode("VGV4dA=="))())
+
+    local box = mkText(loadstring(base64decode("VGV4dEJveA=="))(), {
+        Name = loadstring(base64decode("Q29kZQ=="))(), Position = UDim2.new(0, 0, 0, 8), Size = UDim2.new(1, 0, 0, 20),
+        Font = FONT, TextSize = SIZE, TextXAlignment = LEFT, TextYAlignment = Enum.TextYAlignment.Top,
+        TextWrapped = false, ClearTextOnFocus = false, MultiLine = true, TextTransparency = 1, Parent = h,
+    }, loadstring(base64decode("VGV4dA=="))())
+
+    local caret = new(loadstring(base64decode("RnJhbWU="))(), { Size = UDim2.fromOffset(2, lineH), BorderSizePixel = 0, Visible = false, ZIndex = 3, Parent = h })
+    bind(caret, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QWNjZW50"))())
+
+    -- status bar
+    local bar = new(loadstring(base64decode("RnJhbWU="))(), { Name = loadstring(base64decode("U3RhdHVz"))(), BackgroundTransparency = 1, Position = UDim2.new(0, 0, 1, -36), Size = UDim2.new(1, 0, 0, 36), Parent = card })
+    local topLine = new(loadstring(base64decode("RnJhbWU="))(), { BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 1), Parent = bar })
+    bind(topLine, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("U3Ryb2tl"))())
+    local left = new(loadstring(base64decode("RnJhbWU="))(), { BackgroundTransparency = 1, Size = UDim2.new(0, 0, 1, 0), AutomaticSize = Enum.AutomaticSize.X, Parent = bar })
+    new(loadstring(base64decode("VUlQYWRkaW5n"))(), { PaddingLeft = UDim.new(0, 14), Parent = left })
+    new(loadstring(base64decode("VUlMaXN0TGF5b3V0"))(), {
+        FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center,
+        Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = left,
+    })
+    local function sep(o)
+        local s = new(loadstring(base64decode("RnJhbWU="))(), { BorderSizePixel = 0, Size = UDim2.fromOffset(1, 14), LayoutOrder = o, Parent = left })
+        bind(s, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("U3Ryb2tl"))())
+    end
+    local function lbl(txt, o)
+        return mkText(loadstring(base64decode("VGV4dExhYmVs"))(), { Text = txt, TextSize = 13, Size = UDim2.new(0, 0, 0, 16), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = o, Parent = left }, loadstring(base64decode("U3Vi"))())
+    end
+    lbl(loadstring(base64decode("THVh"))(), 1); sep(2)
+    local linesLbl = lbl(loadstring(base64decode("MSBsaW5l"))(), 3); sep(4)
+    local dot = new(loadstring(base64decode("RnJhbWU="))(), { Size = UDim2.fromOffset(7, 7), BorderSizePixel = 0, LayoutOrder = 5, Parent = left })
+    corner(dot, 4)
+    local savedLbl = lbl(loadstring(base64decode("U2F2ZWQ="))(), 6)
+
+    local clearBtn = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+        Text = loadstring(base64decode("Q2xlYXI="))(), TextSize = 13, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 1),
+        Size = UDim2.fromOffset(62, 26), BackgroundTransparency = 0, Parent = bar,
+    }, loadstring(base64decode("VGV4dA=="))())
+    bind(clearBtn, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+    corner(clearBtn, 13)
+    pressFx(clearBtn)
+    on(clearBtn.Activated, function() box.Text = loadstring(base64decode(""))() end)
+
+    function Editor.setSaved(s)
+        dot.BackgroundColor3 = s and C(88, 214, 141) or C(245, 185, 66)
+        savedLbl.Text = s and loadstring(base64decode("U2F2ZWQ="))() or loadstring(base64decode("U2F2aW5nLi4u"))()
+    end
+    Editor.setSaved(true)
+
+    local lastLines = -1
+    local pending = false
+    local function render()
+        pending = false
+        local text = box.Text
+        if text:find(loadstring(base64decode("XHI="))(), 1, true) then
+            box.Text = (text:gsub(loadstring(base64decode("XHI="))(), loadstring(base64decode(""))()))
+            return
+        end
+        if text == loadstring(base64decode(""))() then
+            hl.Text = '<font color=loadstring(base64decode("JyAuLiBoZXgoVGhlbWUuU3ViKSAuLiAn"))()>-- Write or paste your Lua script here</font>'
+        elseif #text > 8000 then
+            hl.Text = esc(text)
+        else
+            hl.Text = highlight(text, Theme.Light and SynPalette.light or SynPalette.dark)
+        end
+
+        local _, nl = text:gsub(loadstring(base64decode("XG4="))(), loadstring(base64decode(""))())
+        local lines = nl + 1
+        if lines ~= lastLines then
+            lastLines = lines
+            local t = {}
+            for 4Lmg8U0m = 1, lines do t[4Lmg8U0m] = 4Lmg8U0m end
+            nums.Text = table.concat(t, loadstring(base64decode("XG4="))())
+            linesLbl.Text = lines .. (lines == 1 and loadstring(base64decode("IGxpbmU="))() or loadstring(base64decode("IGxpbmVz"))())
+        end
+
+        local maxLen = 0
+        for ln in (text .. loadstring(base64decode("XG4="))()):gmatch(loadstring(base64decode("KFteXG5dKilcbg=="))()) do
+            if #ln > maxLen then maxLen = #ln end
+        end
+        local H = math.max(lines * lineH + 24, v.AbsoluteWindowSize.Y)
+        local W = math.max(h.AbsoluteSize.X, maxLen * charW + 60)
+        v.CanvasSize = UDim2.new(0, 0, 0, H)
+        h.Size = UDim2.new(1, -50, 0, H)
+        h.CanvasSize = UDim2.new(0, W, 0, 0)
+        divider.Size = UDim2.new(0, 1, 0, H)
+        nums.Size = UDim2.new(0, 44, 0, H - 8)
+        hl.Size = UDim2.new(0, W, 0, H - 8)
+        box.Size = UDim2.new(0, W, 0, H - 8)
+    end
+    local function refresh()
+        if pending then return end
+        pending = true
+        task.defer(render)
+    end
+    Editor.refresh = refresh
+
+    -- caret (custom, so it stays visible over the transparent text box)
+    local blinkT = 0
+    local function updateCaret()
+        local pos = box.CursorPosition
+        if pos < 1 or not box:IsFocused() then
+            caret.Visible = false
+            return
+        end
+        local before = box.Text:sub(1, pos - 1)
+        local _, nl = before:gsub(loadstring(base64decode("XG4="))(), loadstring(base64decode(""))())
+        local lastNl = before:match(loadstring(base64decode("LiooKVxu"))())
+        local col = #before - (lastNl or 0)
+        local Wi2gF0Ma, bkHtsWq6 = col * charW, 8 + nl * lineH
+        caret.Position = UDim2.fromOffset(Wi2gF0Ma, bkHtsWq6)
+        blinkT = 0
+        caret.Visible = true
+
+        local viewH, cy = v.AbsoluteWindowSize.Y, v.CanvasPosition.Y
+        if bkHtsWq6 < cy then
+            v.CanvasPosition = Vector2.new(0, math.max(0, bkHtsWq6 - 4))
+        elseif bkHtsWq6 + lineH > cy + viewH then
+            v.CanvasPosition = Vector2.new(0, bkHtsWq6 + lineH - viewH + 10)
+        end
+        local viewW, cx = h.AbsoluteWindowSize.X, h.CanvasPosition.X
+        if Wi2gF0Ma < cx then
+            h.CanvasPosition = Vector2.new(math.max(0, Wi2gF0Ma - 24), 0)
+        elseif Wi2gF0Ma + charW + 8 > cx + viewW then
+            h.CanvasPosition = Vector2.new(Wi2gF0Ma + charW + 28 - viewW, 0)
+        end
+    end
+
+    on(box:GetPropertyChangedSignal(loadstring(base64decode("Q3Vyc29yUG9zaXRpb24="))()), updateCaret)
+    on(box.Focused, updateCaret)
+    on(box.FocusLost, function() caret.Visible = false end)
+    on(RunService.Heartbeat, function(dt)
+        if box:IsFocused() and box.CursorPosition >= 1 then
+            blinkT = blinkT + dt
+            caret.Visible = (blinkT % 1) < 0.6
+        end
+    end)
+
+    on(box:GetPropertyChangedSignal(loadstring(base64decode("VGV4dA=="))()), function()
+        refresh()
+        if Editor.onText then Editor.onText(box.Text) end
+    end)
+    on(v:GetPropertyChangedSignal(loadstring(base64decode("QWJzb2x1dGVTaXpl"))()), refresh)
+    hooks[#hooks + 1] = function() render() end
+
+    Editor.box = box
+    function Editor.getText() return box.Text end
+    function Editor.setText(t) box.Text = t end
+    function Editor.resetScroll()
+        v.CanvasPosition = Vector2.new(0, 0)
+        h.CanvasPosition = Vector2.new(0, 0)
+    end
+end
+
+--==================== CONSOLE ====================--
+local Console = {}
+do
+    local card = new(loadstring(base64decode("RnJhbWU="))(), {
+        Name = loadstring(base64decode("Q29uc29sZUNhcmQ="))(), Position = UDim2.new(0, 0, 0.58, 6), Size = UDim2.new(1, 0, 0.42, -6),
+        BackgroundTransparency = 0.25, BorderSizePixel = 0, ClipsDescendants = true, Parent = Content,
+    })
+    bind(card, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("UGFuZWw="))())
+    corner(card, 14)
+    stroke(card, loadstring(base64decode("U3Ryb2tl"))())
+
+    mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+        Text = loadstring(base64decode("Pl8gIENvbnNvbGU="))(), Font = GB, TextSize = 14, TextXAlignment = LEFT,
+        Position = UDim2.new(0, 14, 0, 0), Size = UDim2.new(0.5, 0, 0, 34), Parent = card,
+    }, loadstring(base64decode("VGV4dA=="))())
+
+    local clear = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+        Text = loadstring(base64decode("Q2xlYXI="))(), TextSize = 13, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0, 17),
+        Size = UDim2.fromOffset(58, 24), BackgroundTransparency = 0, Parent = card,
+    }, loadstring(base64decode("VGV4dA=="))())
+    bind(clear, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+    corner(clear, 12)
+    pressFx(clear)
+
+    local target = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+        Text = loadstring(base64decode("Q2xpZW50"))(), TextSize = 12, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -74, 0, 17),
+        Size = UDim2.fromOffset(56, 22), BackgroundTransparency = 0, Parent = card,
+    }, loadstring(base64decode("U3Vi"))())
+    bind(target, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+    corner(target, 11)
+
+    local line = new(loadstring(base64decode("RnJhbWU="))(), { BorderSizePixel = 0, Position = UDim2.new(0, 0, 0, 34), Size = UDim2.new(1, 0, 0, 1), Parent = card })
+    bind(line, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("U3Ryb2tl"))())
+
+    local body = new(loadstring(base64decode("U2Nyb2xsaW5nRnJhbWU="))(), {
+        Name = loadstring(base64decode("Qm9keQ=="))(), BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.new(0, 0, 0, 36),
+        Size = UDim2.new(1, 0, 1, -36), CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 3,
+        ScrollingDirection = Enum.ScrollingDirection.Y, Parent = card,
+    })
+    bind(body, loadstring(base64decode("U2Nyb2xsQmFySW1hZ2VDb2xvcjM="))(), loadstring(base64decode("U3Vi"))())
+    new(loadstring(base64decode("VUlMaXN0TGF5b3V0"))(), { Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder, Parent = body })
+    new(loadstring(base64decode("VUlQYWRkaW5n"))(), { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8), Parent = body })
+
+    local empty = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+        Text = loadstring(base64decode("XHV7MjAzQX0gIFJ1biBhIHNjcmlwdCB0byBzZWUgaXRzIG91dHB1dCBoZXJlLg=="))(), Font = Enum.Font.Code, TextSize = 13,
+        TextXAlignment = LEFT, Position = UDim2.new(0, 14, 0, 44), Size = UDim2.new(1, -28, 0, 20), Parent = card,
+    }, loadstring(base64decode("U3Vi"))())
+
+    local entries, counter = {}, 0
+    local function kindColor(k)
+        if k == loadstring(base64decode("d2Fybg=="))() then return C(255, 196, 80)
+        elseif k == loadstring(base64decode("ZXJyb3I="))() then return C(255, 105, 105)
+        elseif k == loadstring(base64decode("aW5mbw=="))() then return Theme.Accent end
+        return Theme.Text
+    end
+
+    function Console.log(kind, msg)
+        counter = counter + 1
+        local l = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+            Text = os.date(loadstring(base64decode("JUg6JU06JVM="))()) .. loadstring(base64decode("ICA="))() .. tostring(msg), Font = Enum.Font.Code, TextSize = 13,
+            TextWrapped = true, TextXAlignment = LEFT, TextYAlignment = Enum.TextYAlignment.Top,
+            Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = counter, Parent = body,
+        }, nil)
+        l:SetAttribute(loadstring(base64decode("aw=="))(), kind)
+        l.TextColor3 = kindColor(kind)
+        entries[#entries + 1] = l
+        if #entries > 120 then table.remove(entries, 1):Destroy() end
+        empty.Visible = false
+        task.delay(0.05, function()
+            body.CanvasPosition = Vector2.new(0, math.max(0, body.AbsoluteCanvasSize.Y - body.AbsoluteWindowSize.Y))
+        end)
+    end
+
+    function Console.clear()
+        for _, l in ipairs(entries) do l:Destroy() end
+        entries = {}
+        empty.Visible = true
+    end
+
+    on(clear.Activated, Console.clear)
+    hooks[#hooks + 1] = function()
+        for _, l in ipairs(entries) do l.TextColor3 = kindColor(l:GetAttribute(loadstring(base64decode("aw=="))())) end
+    end
+end
+
+--==================== TABS / SCRIPTS ====================--
+local Tabs, activeIdx = {}, 1
+do
+    local data = readJson(loadstring(base64decode("RGVsdGFZQl9zY3JpcHRzLmpzb24="))(), nil)
+    if type(data) == loadstring(base64decode("dGFibGU="))() and type(data.tabs) == loadstring(base64decode("dGFibGU="))() and #data.tabs > 0 then
+        for _, t in ipairs(data.tabs) do
+            if type(t) == loadstring(base64decode("dGFibGU="))() and type(t.name) == loadstring(base64decode("c3RyaW5n"))() and type(t.text) == loadstring(base64decode("c3RyaW5n"))() then
+                Tabs[#Tabs + 1] = { name = t.name, text = t.text }
+            end
+        end
+        if type(data.active) == loadstring(base64decode("bnVtYmVy"))() then activeIdx = data.active end
+    end
+    if #Tabs == 0 then Tabs[1] = { name = loadstring(base64decode("U2NyaXB0IDE="))(), text = 'print(loadstring(base64decode("SGVsbG8gZnJvbSBEZWx0YSE="))())' } end
+    activeIdx = math.clamp(activeIdx, 1, #Tabs)
+end
+
+local saveToken = 0
+local function persist()
+    writeJson(loadstring(base64decode("RGVsdGFZQl9zY3JpcHRzLmpzb24="))(), { tabs = Tabs, active = activeIdx })
+end
+local function scheduleSave()
+    saveToken = saveToken + 1
+    local my = saveToken
+    Editor.setSaved(false)
+    task.delay(0.7, function()
+        if my == saveToken then
+            persist()
+            Editor.setSaved(true)
+        end
+    end)
+end
+
+local selectTab, renameTab, closeTab
+
+local function renderTabs()
+    for _, c in ipairs(TabBar:GetChildren()) do
+        if c:IsA(loadstring(base64decode("R3VpT2JqZWN0"))()) and c ~= PlusBtn then c:Destroy() end
+    end
+    for 4Lmg8U0m, tab in ipairs(Tabs) do
+        local active = (4Lmg8U0m == activeIdx)
+        local holder = new(loadstring(base64decode("RnJhbWU="))(), {
+            Name = loadstring(base64decode("VGFi"))(), LayoutOrder = 4Lmg8U0m, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.new(0, 0, 0, 34),
+            BackgroundTransparency = active and 0 or 1, BorderSizePixel = 0, Parent = TabBar,
+        })
+        bind(holder, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+        corner(holder, 17)
+        new(loadstring(base64decode("VUlQYWRkaW5n"))(), { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, active and 6 or 12), Parent = holder })
+        new(loadstring(base64decode("VUlMaXN0TGF5b3V0"))(), {
+            FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = holder,
+        })
+        local nameBtn = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+            Text = tab.name, Font = active and GB or GM, TextSize = 14, AutomaticSize = Enum.AutomaticSize.X,
+            Size = UDim2.new(0, 0, 1, 0), LayoutOrder = 1, Parent = holder,
+        }, active and loadstring(base64decode("VGV4dA=="))() or loadstring(base64decode("U3Vi"))())
+        nameBtn.Activated:Connect(function() selectTab(4Lmg8U0m) end)
+        if active then
+            local pen = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), { Text = ICON_PEN, TextSize = 13, Size = UDim2.fromOffset(26, 26), LayoutOrder = 2, Parent = holder }, loadstring(base64decode("VGV4dA=="))())
+            pen.Activated:Connect(function() renameTab(4Lmg8U0m) end)
+            if #Tabs > 1 then
+                local Wi2gF0Ma = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), { Text = ICON_X, TextSize = 22, Size = UDim2.fromOffset(24, 26), LayoutOrder = 3, Parent = holder }, loadstring(base64decode("U3Vi"))())
+                Wi2gF0Ma.Activated:Connect(function() closeTab(4Lmg8U0m) end)
+            end
+        end
+    end
+end
+
+selectTab = function(4Lmg8U0m)
+    if not Tabs[4Lmg8U0m] then return end
+    if Tabs[activeIdx] then Tabs[activeIdx].text = Editor.getText() end
+    activeIdx = 4Lmg8U0m
+    Editor.setText(Tabs[4Lmg8U0m].text)
+    Editor.resetScroll()
+    renderTabs()
+    scheduleSave()
+end
+
+renameTab = function(4Lmg8U0m)
+    Prompt.show({
+        title = loadstring(base64decode("UmVuYW1lIHNjcmlwdA=="))(), input = true, default = Tabs[4Lmg8U0m].name, okText = loadstring(base64decode("U2F2ZQ=="))(),
+        onSubmit = function(txt)
+            txt = (txt:gsub(loadstring(base64decode("XiVzKw=="))(), loadstring(base64decode(""))()):gsub(loadstring(base64decode("JXMrJA=="))(), loadstring(base64decode(""))()))
+            if txt == loadstring(base64decode(""))() then
+                notify(loadstring(base64decode("TmFtZSBjYW4ndCBiZSBlbXB0eQ=="))())
+                return
+            end
+            Tabs[4Lmg8U0m].name = txt:sub(1, 16)
+            renderTabs()
+            scheduleSave()
+        end,
+    })
+end
+
+closeTab = function(4Lmg8U0m)
+    if #Tabs <= 1 then return end
+    local function doClose()
+        table.remove(Tabs, 4Lmg8U0m)
+        activeIdx = math.clamp(math.min(activeIdx, #Tabs), 1, #Tabs)
+        Editor.setText(Tabs[activeIdx].text)
+        Editor.resetScroll()
+        renderTabs()
+        scheduleSave()
+    end
+    if Tabs[4Lmg8U0m].text:find(loadstring(base64decode("JVM="))()) then
+        Prompt.show({
+            title = loadstring(base64decode("RGVsZXRlIHNjcmlwdD8="))(), message = 'loadstring(base64decode("JyAuLiBUYWJzW2ldLm5hbWUgLi4gJw=="))() will be deleted.',
+            okText = loadstring(base64decode("RGVsZXRl"))(), onSubmit = doClose,
+        })
+    else
+        doClose()
+    end
+end
+
+local function addTab()
+    if #Tabs >= 12 then
+        notify(loadstring(base64decode("VGFiIGxpbWl0IHJlYWNoZWQgKDEyKQ=="))())
+        return
+    end
+    local function exists(nm)
+        for _, t in ipairs(Tabs) do
+            if t.name == nm then return true end
+        end
+        return false
+    end
+    local n = 1
+    while exists(loadstring(base64decode("U2NyaXB0IA=="))() .. n) do n = n + 1 end
+    Tabs[#Tabs + 1] = { name = loadstring(base64decode("U2NyaXB0IA=="))() .. n, text = loadstring(base64decode(""))() }
+    selectTab(#Tabs)
+    task.delay(0.08, function()
+        TabBar.CanvasPosition = Vector2.new(math.max(0, TabBar.AbsoluteCanvasSize.X), 0)
+    end)
+end
+
+on(PlusBtn.Activated, addTab)
+pressFx(PlusBtn)
+
+Editor.onText = function(t)
+    local tab = Tabs[activeIdx]
+    if tab and tab.text ~= t then
+        tab.text = t
+        scheduleSave()
+    end
+end
+
+--==================== EXECUTE ====================--
+local function fmt(...)
+    local parts = {}
+    for 4Lmg8U0m = 1, select(loadstring(base64decode("Iw=="))(), ...) do parts[4Lmg8U0m] = tostring((select(4Lmg8U0m, ...))) end
+    return table.concat(parts, loadstring(base64decode("IA=="))())
+end
+
+local function execute()
+    local src = Editor.getText()
+    if not src:find(loadstring(base64decode("JVM="))()) then
+        Console.log(loadstring(base64decode("d2Fybg=="))(), loadstring(base64decode("Tm90aGluZyB0byBleGVjdXRlLg=="))())
+        return
+    end
+    local loader = loadstring or load
+    if not loader then
+        Console.log(loadstring(base64decode("ZXJyb3I="))(), loadstring(base64decode("VGhpcyBleGVjdXRvciBkb2VzIG5vdCBzdXBwb3J0IGxvYWRzdHJpbmcu"))())
+        return
+    end
+    local fn, err = loader(src)
+    if not fn then
+        Console.log(loadstring(base64decode("ZXJyb3I="))(), tostring(err))
+        return
+    end
+    Console.log(loadstring(base64decode("aW5mbw=="))(), loadstring(base64decode("RXhlY3V0aW5nIA=="))() .. (Tabs[activeIdx] and Tabs[activeIdx].name or loadstring(base64decode("c2NyaXB0"))()) .. loadstring(base64decode("Li4u"))())
+
+    local hooked = false
+    pcall(function()
+        local base = getfenv(fn)
+        local env = setmetatable({
+            print = function(...)
+                Console.log(loadstring(base64decode("cHJpbnQ="))(), fmt(...))
+                return print(...)
+            end,
+            warn = function(...)
+                Console.log(loadstring(base64decode("d2Fybg=="))(), fmt(...))
+                return warn(...)
+            end,
+        }, { __index = base, __newindex = base })
+        setfenv(fn, env)
+        hooked = true
+    end)
+
+    local logConn
+    if not hooked then
+        logConn = LogService.MessageOut:Connect(function(m, t)
+            local kind = loadstring(base64decode("cHJpbnQ="))()
+            if t == Enum.MessageType.MessageError then kind = loadstring(base64decode("ZXJyb3I="))()
+            elseif t == Enum.MessageType.MessageWarning then kind = loadstring(base64decode("d2Fybg=="))() end
+            Console.log(kind, m)
+        end)
+    end
+
+    task.spawn(function()
+        local ok, e = xpcall(fn, function(m) return tostring(m) end)
+        if not ok then Console.log(loadstring(base64decode("ZXJyb3I="))(), e) end
+        if logConn then
+            task.delay(1, function() logConn:Disconnect() end)
+        end
+    end)
+end
+on(ExecBtn.Activated, execute)
+
+--==================== TOGGLE BUTTON + MENU OPEN/CLOSE ====================--
+local TOGGLE_DEFAULT_POS = UDim2.new(0, 14, 0.5, -23)
+local Toggle = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+    Name = loadstring(base64decode("VG9nZ2xlQnV0dG9u"))(), Text = ICON_DELTA, Font = GB, TextSize = 24,
+    Position = TOGGLE_DEFAULT_POS, Size = UDim2.fromOffset(46, 46), BackgroundTransparency = 0,
+    ZIndex = 5, Parent = Gui,
+}, loadstring(base64decode("Qmc="))())
+bind(Toggle, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QWNjZW50"))())
+corner(Toggle, 23)
+stroke(Toggle, loadstring(base64decode("U3Ryb2tl"))())
+
+local menuOpen, openToken = true, 0
+local function setMenu(open)
+    menuOpen = open
+    openToken = openToken + 1
+    local tk = openToken
+    if open then
+        ensureOnScreen(Main, UDim2.fromScale(0.5, 0.5))
+        Main.Visible = true
+        MenuScale.Scale = 0.9
+        TweenService:Create(MenuScale, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+    else
+        TweenService:Create(MenuScale, TweenInfo.new(0.14), { Scale = 0.9 }):Play()
+        task.delay(0.14, function()
+            if tk == openToken then Main.Visible = false end
+        end)
+    end
+end
+
+makeDraggable(Toggle, Toggle, function() setMenu(not menuOpen) end, function()
+    ensureOnScreen(Toggle, TOGGLE_DEFAULT_POS)
+end)
+makeDraggable(Grip, Main, nil, nil)
+
+-- emergency keybind (PC): RightShift
+on(UIS.InputBegan, function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then setMenu(not menuOpen) end
+end)
+
+--==================== SETTINGS ====================--
+local SettingsUI = {}
+local openWhitelist
+
+local function makeSwitch(parent, state, onChange)
+    local track = new(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+        AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(44, 24),
+        Text = loadstring(base64decode(""))(), AutoButtonColor = false, BorderSizePixel = 0, Parent = parent,
+    })
+    corner(track, 12)
+    local knob = new(loadstring(base64decode("RnJhbWU="))(), { Size = UDim2.fromOffset(18, 18), BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, Parent = track })
+    corner(knob, 9)
+    local sw = { State = state and true or false, Enabled = true }
+
+    local function paint(instant)
+        local isOn = sw.State
+        local col = isOn and Theme.Accent or Theme.Sub:Lerp(Theme.Button, 0.6)
+        local tr = sw.Enabled and 0 or 0.6
+        local pos = isOn and UDim2.new(0, 23, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+        local ktr = sw.Enabled and 0 or 0.5
+        if instant then
+            track.BackgroundColor3, track.BackgroundTransparency = col, tr
+            knob.Position, knob.BackgroundTransparency = pos, ktr
+        else
+            local info = TweenInfo.new(0.15)
+            TweenService:Create(track, info, { BackgroundColor3 = col, BackgroundTransparency = tr }):Play()
+            TweenService:Create(knob, info, { Position = pos, BackgroundTransparency = ktr }):Play()
+        end
+    end
+    function sw:Set(v, silent)
+        self.State = v and true or false
+        paint(false)
+        if not silent and onChange then onChange(self.State) end
+    end
+    function sw:SetEnabled(e)
+        self.Enabled = e and true or false
+        paint(false)
+    end
+    on(track.Activated, function()
+        if sw.Enabled then sw:Set(not sw.State) end
+    end)
+    hooks[#hooks + 1] = function() paint(true) end
+    paint(true)
+    return sw
+end
+
+do
+    local ov = new(loadstring(base64decode("RnJhbWU="))(), {
+        Name = loadstring(base64decode("U2V0dGluZ3M="))(), Size = UDim2.fromScale(1, 1), BackgroundTransparency = 0.03,
+        BorderSizePixel = 0, Visible = false, Active = true, ZIndex = 20, Parent = Main,
+    })
+    bind(ov, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("Qmc="))())
+
+    local top = new(loadstring(base64decode("RnJhbWU="))(), { BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, 24), Size = UDim2.new(1, -28, 0, 38), Parent = ov })
+    mkText(loadstring(base64decode("VGV4dExhYmVs"))(), { Text = loadstring(base64decode("U2V0dGluZ3M="))(), Font = GB, TextSize = 20, TextXAlignment = LEFT, Size = UDim2.new(1, -50, 1, 0), Parent = top }, loadstring(base64decode("VGV4dA=="))())
+    local closeBtn = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+        Text = ICON_X, TextSize = 24, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 0, 0.5, 0),
+        Size = UDim2.fromOffset(36, 36), BackgroundTransparency = 0, Parent = top,
+    }, loadstring(base64decode("VGV4dA=="))())
+    bind(closeBtn, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+    corner(closeBtn, 18)
+    pressFx(closeBtn)
+    on(closeBtn.Activated, function() ov.Visible = false end)
+
+    local body = new(loadstring(base64decode("U2Nyb2xsaW5nRnJhbWU="))(), {
+        BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.new(0, 14, 0, 72),
+        Size = UDim2.new(1, -28, 1, -84), CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 3,
+        ScrollingDirection = Enum.ScrollingDirection.Y, Parent = ov,
+    })
+    bind(body, loadstring(base64decode("U2Nyb2xsQmFySW1hZ2VDb2xvcjM="))(), loadstring(base64decode("U3Vi"))())
+    new(loadstring(base64decode("VUlMaXN0TGF5b3V0"))(), { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, Parent = body })
+    new(loadstring(base64decode("VUlQYWRkaW5n"))(), { PaddingRight = UDim.new(0, 6), PaddingBottom = UDim.new(0, 12), Parent = body })
+
+    local order = 0
+    local function nextOrder() order = order + 1; return order end
+    local function card(h, asButton, parent)
+        local props = {
+            Size = UDim2.new(1, 0, 0, h), BackgroundTransparency = 0, BorderSizePixel = 0,
+            LayoutOrder = nextOrder(), Parent = parent or body,
+        }
+        if asButton then
+            props.Text = loadstring(base64decode(""))()
+            props.AutoButtonColor = false
+        end
+        local f = new(asButton and loadstring(base64decode("VGV4dEJ1dHRvbg=="))() or loadstring(base64decode("RnJhbWU="))(), props)
+        bind(f, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+        corner(f, 12)
+        if asButton then pressFx(f) end
+        return f
+    end
+    local function rowLabel(parent, text, rightPad)
+        return mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+            Text = text, Font = GB, TextSize = 13, TextXAlignment = LEFT, TextWrapped = true,
+            Position = UDim2.new(0, 14, 0, 0), Size = UDim2.new(1, -(rightPad or 78), 1, 0), Parent = parent,
+        }, loadstring(base64decode("VGV4dA=="))())
+    end
+
+    ------------------------------------------------ THEMES
+    local themeHdr = card(44, true)
+    rowLabel(themeHdr, loadstring(base64decode("VGhlbWVz"))(), 140).TextSize = 15
+    local curTheme = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+        Text = Cfg.theme, TextSize = 13, TextXAlignment = RIGHT, AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, -14, 0, 0), Size = UDim2.new(0.5, -14, 1, 0), Parent = themeHdr,
+    }, loadstring(base64decode("U3Vi"))())
+
+    local grid = new(loadstring(base64decode("RnJhbWU="))(), { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = nextOrder(), Parent = body })
+    new(loadstring(base64decode("VUlHcmlkTGF5b3V0"))(), { CellSize = UDim2.new(1 / 3, -4, 0, 36), CellPadding = UDim2.fromOffset(6, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = grid })
+    on(themeHdr.Activated, function() grid.Visible = not grid.Visible end)
+
+    for 4Lmg8U0m, name in ipairs(THEME_ORDER) do
+        local b = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+            Text = name, TextSize = 13, TextXAlignment = CENTER, LayoutOrder = 4Lmg8U0m,
+            BackgroundTransparency = 0, Parent = grid,
+        }, loadstring(base64decode("VGV4dA=="))())
+        bind(b, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+        corner(b, 10)
+        pressFx(b)
+        local st = new(loadstring(base64decode("VUlTdHJva2U="))(), { Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Color = Theme.Stroke, Parent = b })
+        local sw = new(loadstring(base64decode("RnJhbWU="))(), {
+            Size = UDim2.fromOffset(8, 8), Position = UDim2.new(0, 9, 0.5, -4),
+            BackgroundColor3 = Themes[name].Accent, BorderSizePixel = 0, Parent = b,
+        })
+        corner(sw, 4)
+        on(b.Activated, function()
+            applyTheme(name)
+            saveSettings()
+            notify(loadstring(base64decode("VGhlbWU6IA=="))() .. name)
+        end)
+        hooks[#hooks + 1] = function()
+            local sel = (Cfg.theme == name)
+            st.Color = sel and Theme.Accent or Theme.Stroke
+            st.Thickness = sel and 2 or 1
+        end
+    end
+    hooks[#hooks + 1] = function() curTheme.Text = Cfg.theme end
+
+    ------------------------------------------------ CREATOR (owner only - not even built for anyone else)
+    if IS_OWNER then
+        local welcome = card(54, true)
+        mkText(loadstring(base64decode("VGV4dExhYmVs"))(), { Text = ICON_CROWN, TextSize = 22, Position = UDim2.new(0, 10, 0, 0), Size = UDim2.new(0, 34, 1, 0), Parent = welcome }, loadstring(base64decode("VGV4dA=="))())
+        mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+            Text = loadstring(base64decode("V2VsY29tZSBDcmVhdG9y"))(), Font = GB, TextSize = 15, TextXAlignment = LEFT,
+            Position = UDim2.new(0, 50, 0, 9), Size = UDim2.new(1, -64, 0, 18), Parent = welcome,
+        }, loadstring(base64decode("QWNjZW50"))())
+        mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+            Text = loadstring(base64decode("U2lnbmVkIGluIGFzIA=="))() .. LocalPlayer.Name .. loadstring(base64decode("ICAtICBmdWxsIGFjY2Vzcw=="))(), TextSize = 12, TextXAlignment = LEFT,
+            Position = UDim2.new(0, 50, 0, 28), Size = UDim2.new(1, -64, 0, 16), Parent = welcome,
+        }, loadstring(base64decode("U3Vi"))())
+        on(welcome.Activated, function() notify(loadstring(base64decode("V2VsY29tZSBiYWNrLCBDcmVhdG9yIA=="))() .. ICON_CROWN) end)
+
+        local wlBtn = card(44, true)
+        rowLabel(wlBtn, loadstring(base64decode("V2hpdGVsaXN0IFVzZXJz"))(), 120).TextSize = 14
+        mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+            Text = loadstring(base64decode("TWFuYWdl"))(), TextSize = 13, TextXAlignment = RIGHT, AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -14, 0, 0), Size = UDim2.new(0.5, -14, 1, 0), Parent = wlBtn,
+        }, loadstring(base64decode("U3Vi"))())
+        on(wlBtn.Activated, function()
+            if IS_OWNER and openWhitelist then openWhitelist() end
+        end)
+    end
+
+    ------------------------------------------------ PARTICLES
+    local sSw, aSw
+    local pRow = card(46)
+    rowLabel(pRow, loadstring(base64decode("UGFydGljbGUgRWZmZWN0IG9uIEJhY2tncm91bmQ="))())
+    local pSw = makeSwitch(pRow, Cfg.particles, function(v)
+        Cfg.particles = v
+        sSw:SetEnabled(v)
+        aSw:SetEnabled(v)
+        Particles.apply()
+        saveSettings()
+    end)
+
+    local subBox = new(loadstring(base64decode("RnJhbWU="))(), { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = nextOrder(), Parent = body })
+    new(loadstring(base64decode("VUlMaXN0TGF5b3V0"))(), { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = subBox })
+    new(loadstring(base64decode("VUlQYWRkaW5n"))(), { PaddingLeft = UDim.new(0, 16), Parent = subBox })
+
+    local spaceRow = card(42, false, subBox)
+    rowLabel(spaceRow, loadstring(base64decode("U3BhY2UgRWZmZWN0"))()).Font = GM
+    sSw = makeSwitch(spaceRow, Cfg.space, function(v)
+        Cfg.space = v
+        Particles.apply()
+        saveSettings()
+    end)
+    local ambRow = card(42, false, subBox)
+    rowLabel(ambRow, loadstring(base64decode("QW1iaWVudCBMaWdodA=="))()).Font = GM
+    aSw = makeSwitch(ambRow, Cfg.ambient, function(v)
+        Cfg.ambient = v
+        Particles.apply()
+        saveSettings()
+    end)
+    sSw:SetEnabled(Cfg.particles)
+    aSw:SetEnabled(Cfg.particles)
+
+    ------------------------------------------------ TOGGLE BUTTON
+    local tbBox = new(loadstring(base64decode("RnJhbWU="))(), { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = nextOrder(), Parent = body })
+    new(loadstring(base64decode("VUlMaXN0TGF5b3V0"))(), { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = tbBox })
+    local tbRow = card(46, false, tbBox)
+    rowLabel(tbRow, loadstring(base64decode("VG9nZ2xlIEJ1dHRvbg=="))())
+    -- NOTE: this setting is intentionally NOT saved. The toggle button always starts enabled.
+    makeSwitch(tbRow, true, function(v)
+        Toggle.Visible = v
+        if not v then notify(loadstring(base64decode("VG9nZ2xlIGhpZGRlbi4gUHJlc3MgUmlnaHRTaGlmdCBvciByZS1ydW4gdGhlIHNjcmlwdCB0byByZXN0b3JlIGl0Lg=="))(), 4) end
+    end)
+    local tip = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+        Text = loadstring(base64decode("RGlzYWJsZXMgb3IgZW5hYmxlcyB0aGUgdG9nZ2xlIGJ1dHRvbiBjb21wbGV0ZWx5LiBQbGVhc2UgYWx3YXlzIGtlZXAgdGhpcyBlbmFibGVkIHNvIHRoZSBtZW51IGRvZXNuJ3QgZ2V0IHN0dWNrIC0gd2l0aG91dCBpdCB5b3UgY2FuJ3QgZ2V0IGJhY2sgaW50byB0aGUgbWVudS4gSWYgdGhhdCBoYXBwZW5zLCBqdXN0IHJlLWV4ZWN1dGUgdGhlIHNjcmlwdCBpbiB5b3VyIGV4ZWN1dG9yICh3b3JrcyB3aXRoIGFueSBleGVjdXRvciku"))(),
+        TextSize = 11, TextWrapped = true, TextXAlignment = LEFT, TextYAlignment = Enum.TextYAlignment.Top,
+        Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = nextOrder(), Parent = tbBox,
+    }, loadstring(base64decode("U3Vi"))())
+    new(loadstring(base64decode("VUlQYWRkaW5n"))(), { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), Parent = tip })
+
+    function SettingsUI.toggle() ov.Visible = not ov.Visible end
+end
+on(GearBtn.Activated, function() SettingsUI.toggle() end)
+
+--==================== WHITELIST MANAGER (OWNER ONLY) ====================--
+if IS_OWNER then
+    local WL = readJson(loadstring(base64decode("RGVsdGFZQl93aGl0ZWxpc3QuanNvbg=="))(), {})
+    if type(WL) ~= loadstring(base64decode("dGFibGU="))() then WL = {} end
+
+    local ov = new(loadstring(base64decode("RnJhbWU="))(), {
+        Name = loadstring(base64decode("V2hpdGVsaXN0"))(), Size = UDim2.fromScale(1, 1), BackgroundTransparency = 0.03,
+        BorderSizePixel = 0, Visible = false, Active = true, ZIndex = 30, Parent = Main,
+    })
+    bind(ov, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("Qmc="))())
+
+    local top = new(loadstring(base64decode("RnJhbWU="))(), { BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, 24), Size = UDim2.new(1, -28, 0, 38), Parent = ov })
+    mkText(loadstring(base64decode("VGV4dExhYmVs"))(), { Text = loadstring(base64decode("V2hpdGVsaXN0IFVzZXJz"))(), Font = GB, TextSize = 20, TextXAlignment = LEFT, Size = UDim2.new(1, -50, 1, 0), Parent = top }, loadstring(base64decode("VGV4dA=="))())
+    local back = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+        Text = ICON_X, TextSize = 24, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 0, 0.5, 0),
+        Size = UDim2.fromOffset(36, 36), BackgroundTransparency = 0, Parent = top,
+    }, loadstring(base64decode("VGV4dA=="))())
+    bind(back, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+    corner(back, 18)
+    pressFx(back)
+    on(back.Activated, function() ov.Visible = false end)
+
+    local inRow = new(loadstring(base64decode("RnJhbWU="))(), { BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, 72), Size = UDim2.new(1, -28, 0, 38), Parent = ov })
+    local nameBox = mkText(loadstring(base64decode("VGV4dEJveA=="))(), {
+        PlaceholderText = loadstring(base64decode("Um9ibG94IHVzZXJuYW1l"))(), ClearTextOnFocus = false, TextSize = 14, TextXAlignment = LEFT,
+        Size = UDim2.new(1, -84, 1, 0), BackgroundTransparency = 0, Parent = inRow,
+    }, loadstring(base64decode("VGV4dA=="))())
+    bind(nameBox, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+    bind(nameBox, loadstring(base64decode("UGxhY2Vob2xkZXJDb2xvcjM="))(), loadstring(base64decode("U3Vi"))())
+    corner(nameBox, 10)
+    new(loadstring(base64decode("VUlQYWRkaW5n"))(), { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = nameBox })
+    local addBtn = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+        Text = loadstring(base64decode("QWRk"))(), Font = GB, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0),
+        Size = UDim2.new(0, 76, 1, 0), BackgroundTransparency = 0, Parent = inRow,
+    }, loadstring(base64decode("RXhlY1RleHQ="))())
+    bind(addBtn, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("RXhlY0Jn"))())
+    corner(addBtn, 10)
+    pressFx(addBtn)
+
+    local list = new(loadstring(base64decode("U2Nyb2xsaW5nRnJhbWU="))(), {
+        BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.new(0, 14, 0, 118),
+        Size = UDim2.new(1, -28, 1, -204), CanvasSize = UDim2.new(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 3, Parent = ov,
+    })
+    bind(list, loadstring(base64decode("U2Nyb2xsQmFySW1hZ2VDb2xvcjM="))(), loadstring(base64decode("U3Vi"))())
+    new(loadstring(base64decode("VUlMaXN0TGF5b3V0"))(), { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, Parent = list })
+    local empty = mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+        Text = loadstring(base64decode("Tm8gdXNlcnMgd2hpdGVsaXN0ZWQgeWV0Lg=="))(), TextSize = 13, Position = UDim2.new(0, 14, 0, 128),
+        Size = UDim2.new(1, -28, 0, 20), TextXAlignment = LEFT, Parent = ov,
+    }, loadstring(base64decode("U3Vi"))())
+
+    local foot = new(loadstring(base64decode("RnJhbWU="))(), { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 14, 1, -12), Size = UDim2.new(1, -28, 0, 70), Parent = ov })
+    local copyBtn = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), { Text = loadstring(base64decode("Q29weSBMaXN0"))(), Font = GB, Size = UDim2.new(1, 0, 0, 34), BackgroundTransparency = 0, Parent = foot }, loadstring(base64decode("VGV4dA=="))())
+    bind(copyBtn, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+    corner(copyBtn, 10)
+    pressFx(copyBtn)
+    mkText(loadstring(base64decode("VGV4dExhYmVs"))(), {
+        Text = loadstring(base64decode("UGFzdGUgdGhlIGNvcGllZCBsaXN0IGludG8geW91ciBob3N0ZWQgd2hpdGVsaXN0IGZpbGUgKFJFTU9URV9XSElURUxJU1RfVVJMKSBvciBTVEFUSUNfV0hJVEVMSVNUIHNvIGl0IHRha2VzIGVmZmVjdCBmb3IgdGhvc2UgcGxheWVycy4="))(),
+        TextSize = 11, TextWrapped = true, TextXAlignment = LEFT, TextYAlignment = Enum.TextYAlignment.Top,
+        Position = UDim2.new(0, 0, 0, 38), Size = UDim2.new(1, 0, 0, 32), Parent = foot,
+    }, loadstring(base64decode("U3Vi"))())
+
+    local function render()
+        for _, c in ipairs(list:GetChildren()) do
+            if c:IsA(loadstring(base64decode("R3VpT2JqZWN0"))()) then c:Destroy() end
+        end
+        empty.Visible = (#WL == 0)
+        for 4Lmg8U0m, name in ipairs(WL) do
+            local r = new(loadstring(base64decode("RnJhbWU="))(), { Size = UDim2.new(1, -6, 0, 36), LayoutOrder = 4Lmg8U0m, BorderSizePixel = 0, Parent = list })
+            bind(r, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("QnV0dG9u"))())
+            corner(r, 10)
+            mkText(loadstring(base64decode("VGV4dExhYmVs"))(), { Text = name, TextXAlignment = LEFT, Position = UDim2.new(0, 12, 0, 0), Size = UDim2.new(1, -90, 1, 0), Parent = r }, loadstring(base64decode("VGV4dA=="))())
+            local rm = mkText(loadstring(base64decode("VGV4dEJ1dHRvbg=="))(), {
+                Text = loadstring(base64decode("UmVtb3Zl"))(), TextSize = 12, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0),
+                Size = UDim2.fromOffset(64, 24), BackgroundTransparency = 0, Parent = r,
+            }, nil)
+            rm.TextColor3 = C(255, 120, 120)
+            bind(rm, loadstring(base64decode("QmFja2dyb3VuZENvbG9yMw=="))(), loadstring(base64decode("UGFuZWw="))())
+            corner(rm, 8)
+            rm.Activated:Connect(function()
+                table.remove(WL, 4Lmg8U0m)
+                writeJson(loadstring(base64decode("RGVsdGFZQl93aGl0ZWxpc3QuanNvbg=="))(), WL)
+                render()
+            end)
+        end
+    end
+
+    local function tryAdd()
+        if not IS_OWNER then return end
+        local name = (nameBox.Text:gsub(loadstring(base64decode("JXM="))(), loadstring(base64decode(""))()))
+        if #name < 3 or #name > 20 or name:find(loadstring(base64decode("W14ld19d"))()) then
+            notify(loadstring(base64decode("RW50ZXIgYSB2YWxpZCBSb2Jsb3ggdXNlcm5hbWU="))())
+            return
+        end
+        if lc(name) == lc(OWNER_NAME) then
+            notify(loadstring(base64decode("WW91J3JlIHRoZSBvd25lciAtIGFscmVhZHkgYWxsb3dlZA=="))())
+            return
+        end
+        for _, n in ipairs(WL) do
+            if lc(n) == lc(name) then
+                notify(name .. loadstring(base64decode("IGlzIGFscmVhZHkgd2hpdGVsaXN0ZWQ="))())
+                return
+            end
+        end
+        notify(loadstring(base64decode("Q2hlY2tpbmcg"))() .. name .. loadstring(base64decode("Li4u"))(), 1.5)
+        task.spawn(function()
+            local ok = pcall(function() return Players:GetUserIdFromNameAsync(name) end)
+            if not ok then
+                notify(loadstring(base64decode("Q291bGRuJ3QgdmVyaWZ5IFwi"))() .. name .. loadstring(base64decode("XCI="))())
+                return
+            end
+            WL[#WL + 1] = name
+            writeJson(loadstring(base64decode("RGVsdGFZQl93aGl0ZWxpc3QuanNvbg=="))(), WL)
+            nameBox.Text = loadstring(base64decode(""))()
+            render()
+            notify(loadstring(base64decode("V2hpdGVsaXN0ZWQg"))() .. name)
+        end)
+    end
+    on(addBtn.Activated, tryAdd)
+    on(nameBox.FocusLost, function(enter) if enter then tryAdd() end end)
+
+    on(copyBtn.Activated, function()
+        if #WL == 0 then
+            notify(loadstring(base64decode("VGhlIGxpc3QgaXMgZW1wdHk="))())
+            return
+        end
+        local clip = setclipboard or toclipboard
+        if clip then
+            clip(table.concat(WL, loadstring(base64decode("XG4="))()))
+            notify(loadstring(base64decode("Q29waWVkIA=="))() .. #WL .. loadstring(base64decode("IHVzZXJuYW1lKHMp"))())
+        else
+            notify(loadstring(base64decode("Q2xpcGJvYXJkIG5vdCBzdXBwb3J0ZWQgYnkgdGhpcyBleGVjdXRvcg=="))())
+        end
+    end)
+
+    openWhitelist = function()
+        if not IS_OWNER then return end
+        ov.Visible = true
+        render()
+    end
+end
+
+--==================== START ====================--
+Particles.apply()
+runHooks()
+renderTabs()
+Editor.setText(Tabs[activeIdx].text)
+Editor.refresh()
+Console.log(loadstring(base64decode("aW5mbw=="))(), loadstring(base64decode("RGVsdGEgcmVhZHkuIFdlbGNvbWUsIA=="))() .. LocalPlayer.Name .. (IS_OWNER and loadstring(base64decode("IChDcmVhdG9yKQ=="))() or loadstring(base64decode(""))()) .. loadstring(base64decode("Lg=="))())
+if IS_OWNER then notify(loadstring(base64decode("V2VsY29tZSBDcmVhdG9yIA=="))() .. ICON_CROWN, 2.5) end
+end
+wOYSPyvp(D8w2k)
+end)(...)
